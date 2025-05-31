@@ -1,0 +1,31 @@
+{
+	"name": "authapi",
+	"version": "1.0.0",
+	"description": "This is a Project mainly focused on building blogpost api",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"dev": "nodemon index.js",
+		"start": "node index.js"
+	},
+	"keywords": ["backend","api","blogapi","blogpost","auth"],
+	"author": "Sumit",
+	"license": "ISC",
+	"type": "module",
+	"dependencies": {
+		"@prisma/client": "^6.8.2",
+		"bcryptjs": "^3.0.2",
+		"cookie-parser": "^1.4.7",
+		"cors": "^2.8.5",
+		"dotenv": "^16.5.0",
+		"express": "^5.1.0",
+		"i": "^0.3.7",
+		"jsonwebtoken": "^9.0.2",
+		"nodemon": "^3.1.10",
+		"npm": "^11.4.1",
+		"prisma": "^6.8.2"
+	},
+	"devDependencies": {
+		"@types/express": "^5.0.2"
+	}
+}
