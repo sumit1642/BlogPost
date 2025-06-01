@@ -11,9 +11,9 @@ import {
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-export const routes = express.Router();
+export const authRoutes = express.Router();
 
-routes.post(
+authRoutes.post(
 	"/register",
 	validateRegisterInput,
 	checkIfUserExists,
@@ -37,7 +37,7 @@ routes.post(
 	},
 );
 
-routes.post("/login", validateLoginInput, getUserByEmail, async (req, res) => {
+authRoutes.post("/login", validateLoginInput, getUserByEmail, async (req, res) => {
 	const { password } = req.body;
 	const user = req.foundUser;
 
@@ -96,7 +96,7 @@ routes.post("/login", validateLoginInput, getUserByEmail, async (req, res) => {
 	});
 });
 
-routes.post("/refreshToken", async (req, res) => {
+authRoutes.post("/refreshToken", async (req, res) => {
 	const oldRefreshToken = req.signedCookies.refreshToken;
 	if (!oldRefreshToken) {
 		return res.status(401).json({
@@ -177,7 +177,7 @@ routes.post("/refreshToken", async (req, res) => {
 	});
 });
 
-routes.get("/logout", async (req, res) => {
+authRoutes.get("/logout", async (req, res) => {
 	const verifyStoredRefreshToken = req.signedCookies.refreshToken;
 	if (!verifyStoredRefreshToken) {
 		return res.status(400).json({
