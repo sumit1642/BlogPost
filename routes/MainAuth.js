@@ -42,7 +42,6 @@ routes.post("/login", validateLoginInput, getUserByEmail, async (req, res) => {
 		return res.status(401).json({ message: "Password is incorrect" });
 	}
 
-	// Delete old refresh tokens for this user before creating a new one
 	await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
 
 	const accessToken = jwt.sign({ user_ID: user.id }, "jwtsupersecretkey", {
@@ -65,18 +64,18 @@ routes.post("/login", validateLoginInput, getUserByEmail, async (req, res) => {
 
 	res.cookie("token", accessToken, {
 		httpOnly: true,
-		secure: true,
+		secure: false,
 		signed: true,
 		maxAge: 60 * 60 * 1000,
-		sameSite: "none",
+		sameSite: "lax",
 	});
 
 	res.cookie("refreshToken", refreshToken, {
 		httpOnly: true,
-		secure: true,
+		secure: false,
 		signed: true,
 		maxAge: 30 * 24 * 60 * 60 * 1000,
-		sameSite: "none",
+		sameSite: "lax",
 	});
 
 	return res.status(201).json({
@@ -108,7 +107,6 @@ routes.post("/refreshToken", async (req, res) => {
 			.json({ message: "Refresh token expired or invalid" });
 	}
 
-	// Delete old refresh token (rotation)
 	await prisma.refreshToken.delete({ where: { token: oldRefreshToken } });
 
 	const newRefreshToken = jwt.sign(
@@ -133,18 +131,18 @@ routes.post("/refreshToken", async (req, res) => {
 
 	res.cookie("token", newAccessToken, {
 		httpOnly: true,
-		secure: true,
+		secure: false,
 		signed: true,
 		maxAge: 60 * 60 * 1000,
-		sameSite: "none",
+		sameSite: "lax",
 	});
 
 	res.cookie("refreshToken", newRefreshToken, {
 		httpOnly: true,
-		secure: true,
+		secure: false,
 		signed: true,
 		maxAge: 30 * 24 * 60 * 60 * 1000,
-		sameSite: "none",
+		sameSite: "lax",
 	});
 
 	return res.status(200).json({
@@ -167,20 +165,19 @@ routes.get("/logout", async (req, res) => {
 	if (!payload || !payload.user_ID) {
 		res.clearCookie("token", {
 			httpOnly: true,
-			secure: true,
-			sameSite: "none",
+			secure: false,
+			sameSite: "lax",
 			signed: true,
 		});
 		res.clearCookie("refreshToken", {
 			httpOnly: true,
-			secure: true,
-			sameSite: "none",
+			secure: false,
+			sameSite: "lax",
 			signed: true,
 		});
 		return res.status(403).json({ message: "Invalid token" });
 	}
 
-	// Validate token exists in DB to prevent fake token logout
 	const storedToken = await prisma.refreshToken.findUnique({
 		where: { token: verifyStoredRefreshToken },
 	});
@@ -188,34 +185,33 @@ routes.get("/logout", async (req, res) => {
 	if (!storedToken || new Date() > storedToken.expiresAt) {
 		res.clearCookie("token", {
 			httpOnly: true,
-			secure: true,
-			sameSite: "none",
+			secure: false,
+			sameSite: "lax",
 			signed: true,
 		});
 		res.clearCookie("refreshToken", {
 			httpOnly: true,
-			secure: true,
-			sameSite: "none",
+			secure: false,
+			sameSite: "lax",
 			signed: true,
 		});
 		return res.status(403).json({ message: "Expired or invalid token" });
 	}
 
-	// Invalidate token
 	await prisma.refreshToken.deleteMany({
 		where: { token: verifyStoredRefreshToken },
 	});
 
 	res.clearCookie("token", {
 		httpOnly: true,
-		secure: true,
-		sameSite: "none",
+		secure: false,
+		sameSite: "lax",
 		signed: true,
 	});
 	res.clearCookie("refreshToken", {
 		httpOnly: true,
-		secure: true,
-		sameSite: "none",
+		secure: false,
+		sameSite: "lax",
 		signed: true,
 	});
 
