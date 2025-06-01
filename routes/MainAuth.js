@@ -46,7 +46,7 @@ routes.post("/login", validateLoginInput, getUserByEmail, async (req, res) => {
 	await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
 
 	const accessToken = jwt.sign({ user_ID: user.id }, "jwtsupersecretkey", {
-		expiresIn: "5s",
+		expiresIn: "15m",
 	});
 
 	const refreshToken = jwt.sign(
