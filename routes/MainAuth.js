@@ -68,7 +68,7 @@ routes.post("/login", validateLoginInput, getUserByEmail, async (req, res) => {
 		secure: true,
 		signed: true,
 		maxAge: 60 * 60 * 1000,
-		sameSite:"none"
+		sameSite: "none",
 	});
 
 	res.cookie("refreshToken", refreshToken, {
@@ -76,7 +76,7 @@ routes.post("/login", validateLoginInput, getUserByEmail, async (req, res) => {
 		secure: true,
 		signed: true,
 		maxAge: 30 * 24 * 60 * 60 * 1000,
-		sameSite:"none"
+		sameSite: "none",
 	});
 
 	return res.status(201).json({
@@ -136,7 +136,7 @@ routes.post("/refreshToken", async (req, res) => {
 		secure: true,
 		signed: true,
 		maxAge: 60 * 60 * 1000,
-		sameSite:"none"
+		sameSite: "none",
 	});
 
 	res.cookie("refreshToken", newRefreshToken, {
@@ -144,7 +144,7 @@ routes.post("/refreshToken", async (req, res) => {
 		secure: true,
 		signed: true,
 		maxAge: 30 * 24 * 60 * 60 * 1000,
-		sameSite:"none"
+		sameSite: "none",
 	});
 
 	return res.status(200).json({
@@ -165,29 +165,59 @@ routes.get("/logout", async (req, res) => {
 		"refreshTokenSecretKey",
 	);
 	if (!payload || !payload.user_ID) {
-		res.clearCookie("token");
-		res.clearCookie("refreshToken");
+		res.clearCookie("token", {
+			httpOnly: true,
+			secure: true,
+			sameSite: "none",
+			signed: true,
+		});
+		res.clearCookie("refreshToken", {
+			httpOnly: true,
+			secure: true,
+			sameSite: "none",
+			signed: true,
+		});
 		return res.status(403).json({ message: "Invalid token" });
 	}
 
 	// Validate token exists in DB to prevent fake token logout
 	const storedToken = await prisma.refreshToken.findUnique({
-		where: { token: oldRefreshToken },
+		where: { token: verifyStoredRefreshToken },
 	});
 
 	if (!storedToken || new Date() > storedToken.expiresAt) {
-		res.clearCookie("token");
-		res.clearCookie("refreshToken");
+		res.clearCookie("token", {
+			httpOnly: true,
+			secure: true,
+			sameSite: "none",
+			signed: true,
+		});
+		res.clearCookie("refreshToken", {
+			httpOnly: true,
+			secure: true,
+			sameSite: "none",
+			signed: true,
+		});
 		return res.status(403).json({ message: "Expired or invalid token" });
 	}
 
 	// Invalidate token
 	await prisma.refreshToken.deleteMany({
-		where: { token: oldRefreshToken },
+		where: { token: verifyStoredRefreshToken },
 	});
 
-	res.clearCookie("token");
-	res.clearCookie("refreshToken");
+	res.clearCookie("token", {
+		httpOnly: true,
+		secure: true,
+		sameSite: "none",
+		signed: true,
+	});
+	res.clearCookie("refreshToken", {
+		httpOnly: true,
+		secure: true,
+		sameSite: "none",
+		signed: true,
+	});
 
 	return res.status(200).json({ message: "User logged out successfully" });
 });
