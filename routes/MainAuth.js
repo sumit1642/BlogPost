@@ -68,6 +68,7 @@ routes.post("/login", validateLoginInput, getUserByEmail, async (req, res) => {
 		secure: true,
 		signed: true,
 		maxAge: 60 * 60 * 1000,
+		sameSite:"none"
 	});
 
 	res.cookie("refreshToken", refreshToken, {
@@ -75,6 +76,7 @@ routes.post("/login", validateLoginInput, getUserByEmail, async (req, res) => {
 		secure: true,
 		signed: true,
 		maxAge: 30 * 24 * 60 * 60 * 1000,
+		sameSite:"none"
 	});
 
 	return res.status(201).json({
@@ -134,6 +136,7 @@ routes.post("/refreshToken", async (req, res) => {
 		secure: true,
 		signed: true,
 		maxAge: 60 * 60 * 1000,
+		sameSite:"none"
 	});
 
 	res.cookie("refreshToken", newRefreshToken, {
@@ -141,6 +144,7 @@ routes.post("/refreshToken", async (req, res) => {
 		secure: true,
 		signed: true,
 		maxAge: 30 * 24 * 60 * 60 * 1000,
+		sameSite:"none"
 	});
 
 	return res.status(200).json({
