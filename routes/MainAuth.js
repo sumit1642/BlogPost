@@ -29,7 +29,11 @@ routes.post(
 			},
 			include: { profile: true },
 		});
-		return res.status(201).json({ msg: "User registered", user: newUser });
+		return res.status(201).json({
+			status: "success",
+			message: "User registered",
+			data: { user: newUser },
+		});
 	},
 );
 
@@ -39,7 +43,11 @@ routes.post("/login", validateLoginInput, getUserByEmail, async (req, res) => {
 
 	const validPassword = await bcrypt.compare(password, user.password);
 	if (!validPassword) {
-		return res.status(401).json({ message: "Password is incorrect" });
+		return res.status(401).json({
+			status: "error",
+			message: "Password is incorrect",
+			code: 401,
+		});
 	}
 
 	await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
@@ -78,23 +86,35 @@ routes.post("/login", validateLoginInput, getUserByEmail, async (req, res) => {
 		sameSite: "lax",
 	});
 
-	return res.status(201).json({
-		msg: "Logged in",
-		accessToken: accessToken,
-		refreshToken: refreshToken,
+	return res.status(200).json({
+		status: "success",
+		message: "Logged in",
+		data: {
+			accessToken,
+			refreshToken,
+		},
 	});
 });
 
 routes.post("/refreshToken", async (req, res) => {
 	const oldRefreshToken = req.signedCookies.refreshToken;
 	if (!oldRefreshToken) {
-		return res.status(401).json({ message: "No refresh token provided" });
+		return res.status(401).json({
+			status: "error",
+			message: "No refresh token provided",
+			code: 401,
+		});
 	}
 
-	const payload = jwt.verify(oldRefreshToken, "refreshTokenSecretKey");
-
-	if (!payload) {
-		return res.status(403).json({ message: "Invalid refresh token" });
+	let payload;
+	try {
+		payload = jwt.verify(oldRefreshToken, "refreshTokenSecretKey");
+	} catch {
+		return res.status(403).json({
+			status: "error",
+			message: "Invalid refresh token",
+			code: 403,
+		});
 	}
 
 	const storedToken = await prisma.refreshToken.findUnique({
@@ -102,9 +122,11 @@ routes.post("/refreshToken", async (req, res) => {
 	});
 
 	if (!storedToken || new Date() > storedToken.expiresAt) {
-		return res
-			.status(403)
-			.json({ message: "Refresh token expired or invalid" });
+		return res.status(403).json({
+			status: "error",
+			message: "Refresh token expired or invalid",
+			code: 403,
+		});
 	}
 
 	await prisma.refreshToken.delete({ where: { token: oldRefreshToken } });
@@ -146,23 +168,29 @@ routes.post("/refreshToken", async (req, res) => {
 	});
 
 	return res.status(200).json({
-		msg: "Tokens refreshed",
-		accessToken: newAccessToken,
-		refreshToken: newRefreshToken,
+		status: "success",
+		message: "Tokens refreshed",
+		data: {
+			accessToken: newAccessToken,
+			refreshToken: newRefreshToken,
+		},
 	});
 });
 
 routes.get("/logout", async (req, res) => {
 	const verifyStoredRefreshToken = req.signedCookies.refreshToken;
 	if (!verifyStoredRefreshToken) {
-		return res.status(400).json({ message: "No user is logged in" });
+		return res.status(400).json({
+			status: "error",
+			message: "No user is logged in",
+			code: 400,
+		});
 	}
 
-	const payload = jwt.verify(
-		verifyStoredRefreshToken,
-		"refreshTokenSecretKey",
-	);
-	if (!payload || !payload.user_ID) {
+	let payload;
+	try {
+		payload = jwt.verify(verifyStoredRefreshToken, "refreshTokenSecretKey");
+	} catch {
 		res.clearCookie("token", {
 			httpOnly: true,
 			secure: false,
@@ -175,7 +203,11 @@ routes.get("/logout", async (req, res) => {
 			sameSite: "lax",
 			signed: true,
 		});
-		return res.status(403).json({ message: "Invalid token" });
+		return res.status(403).json({
+			status: "error",
+			message: "Invalid token",
+			code: 403,
+		});
 	}
 
 	const storedToken = await prisma.refreshToken.findUnique({
@@ -195,7 +227,11 @@ routes.get("/logout", async (req, res) => {
 			sameSite: "lax",
 			signed: true,
 		});
-		return res.status(403).json({ message: "Expired or invalid token" });
+		return res.status(403).json({
+			status: "error",
+			message: "Expired or invalid token",
+			code: 403,
+		});
 	}
 
 	await prisma.refreshToken.deleteMany({
@@ -215,5 +251,8 @@ routes.get("/logout", async (req, res) => {
 		signed: true,
 	});
 
-	return res.status(200).json({ message: "User logged out successfully" });
+	return res.status(200).json({
+		status: "success",
+		message: "User logged out successfully",
+	});
 });

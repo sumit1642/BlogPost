@@ -6,8 +6,10 @@ const prisma = new PrismaClient();
 export const validateRegisterInput = (req, res, next) => {
 	const { name, email, password } = req.body;
 	if (!name || !email || !password) {
-		return res.status(404).json({
-			msg: "You piece of shit, fill all the fields with your b**b's milk",
+		return res.status(400).json({
+			status: "error",
+			message: "All fields are required",
+			code: 400,
 		});
 	}
 	next();
@@ -17,9 +19,11 @@ export const checkIfUserExists = async (req, res, next) => {
 	const email = req.body.email;
 	const existingUser = await prisma.user.findUnique({ where: { email } });
 	if (existingUser) {
-		return res
-			.status(404)
-			.json({ error: "User with that email already exists" });
+		return res.status(409).json({
+			status: "error",
+			message: "User with that email already exists",
+			code: 409,
+		});
 	}
 	next();
 };
@@ -27,7 +31,11 @@ export const checkIfUserExists = async (req, res, next) => {
 export const validateLoginInput = (req, res, next) => {
 	const { email, password } = req.body;
 	if (!email || !password) {
-		return res.status(400).json({ error: "All fields are required" });
+		return res.status(400).json({
+			status: "error",
+			message: "All fields are required",
+			code: 400,
+		});
 	}
 	next();
 };
@@ -37,9 +45,13 @@ export const getUserByEmail = async (req, res, next) => {
 	const user = await prisma.user.findUnique({ where: { email } });
 
 	if (!user) {
-		return res.status(401).json({ error: "User doesn't exist" });
+		return res.status(401).json({
+			status: "error",
+			message: "User doesn't exist",
+			code: 401,
+		});
 	}
 
-	req.foundUser = user; // attach for next middleware/handler
+	req.foundUser = user;
 	next();
 };
