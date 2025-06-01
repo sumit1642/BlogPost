@@ -3,8 +3,16 @@ import { PrismaClient } from "@prisma/client";
 import express from "express";
 import { routes } from "./routes/MainAuth.js";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 const app = express();
 const prisma = new PrismaClient();
+
+app.use(
+	cors({
+		origin: "https://localhost:5173",
+		credentials: true,
+	}),
+);
 
 app.use(express.json());
 app.use(cookieParser("yourSecretHere"));
