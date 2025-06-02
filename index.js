@@ -26,23 +26,7 @@ app.use(cookieParser(process.env.COOKIE_SECRET || "yourSecretHere"));
 app.use("/api/auth", authRoutes);
 app.use("/api", postsRoutes);
 
-app.get("/health", (req, res) => {
-	res.status(200).json({
-		status: "success",
-		message: "Server is running",
-		timestamp: new Date().toISOString(),
-	});
-});
-
-app.use((err, req, res, next) => {
-	console.error("Unhandled error:", err);
-	res.status(500).json({
-		status: "error",
-		message: "Internal server error",
-		code: 500,
-	});
-});
-
+// *, specifies that if there are no routes      
 app.use("*", (req, res) => {
 	res.status(404).json({
 		status: "error",
