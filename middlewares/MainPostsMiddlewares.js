@@ -1,3 +1,4 @@
+// middlewares/MainPostsMiddlewares.js
 import jwt from "jsonwebtoken";
 import Joi from "joi";
 import { PrismaClient } from "@prisma/client";
@@ -74,7 +75,7 @@ export const verifyAuth = async (req, res, next) => {
 				});
 
 				req.user = { user_ID: refreshDecoded.user_ID };
-				next();
+				return next();
 			} catch (refreshError) {
 				return res.status(403).json({
 					status: "error",
@@ -100,7 +101,7 @@ export const verifyAuth = async (req, res, next) => {
 			}
 
 			req.user = decoded;
-			next();
+			return next();
 		}
 	} catch (error) {
 		console.error("Auth middleware error:", error);
@@ -118,17 +119,20 @@ const postSchema = Joi.object({
 		.trim()
 		.min(3)
 		.max(100)
-		.pattern(/^[a-zA-Z0-9\s\-_.,!?]+$/)
+		.pattern(/^[a-zA-Z0-9\s\-_.,!?'":;()\[\]]+$/)
 		.required()
 		.messages({
 			"string.pattern.base": "Title contains invalid characters",
 			"string.min": "Title must be at least 3 characters long",
 			"string.max": "Title cannot exceed 100 characters",
+			"any.required": "Title is required",
 		}),
-	content: Joi.string().trim().min(10).max(2000).required().messages({
+	content: Joi.string().trim().min(10).max(5000).required().messages({
 		"string.min": "Content must be at least 10 characters long",
-		"string.max": "Content cannot exceed 2000 characters",
+		"string.max": "Content cannot exceed 5000 characters",
+		"any.required": "Content is required",
 	}),
+	published: Joi.boolean().optional().default(false),
 });
 
 const idParamSchema = Joi.object({
@@ -190,7 +194,7 @@ export const checkPostOwnership = async (req, res, next) => {
 
 		const post = await prisma.post.findUnique({
 			where: { id: postId },
-			select: { id: true, authorId: true, title: true },
+			select: { id: true, authorId: true, title: true, published: true },
 		});
 
 		if (!post) {

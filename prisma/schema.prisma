@@ -11,11 +11,15 @@ model Post {
     id        Int      @id @default(autoincrement())
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
-    title     String   @unique @db.VarChar(50)
-    content   String?
+    title     String   @unique @db.VarChar(100)
+    content   String?  @db.Text
     published Boolean  @default(false)
-    author    User     @relation(fields: [authorId], references: [id])
+    author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
     authorId  Int
+
+    @@index([authorId])
+    @@index([published])
+    @@index([createdAt])
 }
 
 model User {
@@ -23,16 +27,19 @@ model User {
     email         String         @unique
     name          String?
     password      String
+    createdAt     DateTime       @default(now())
     posts         Post[]
     profile       Profile?
     refreshTokens RefreshToken[]
+
+    @@index([email])
 }
 
 model Profile {
     id     Int     @id @default(autoincrement())
-    bio    String?
+    bio    String? @db.Text
     userId Int     @unique
-    user   User    @relation(fields: [userId], references: [id])
+    user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model RefreshToken {
@@ -42,4 +49,7 @@ model RefreshToken {
     user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
     expiresAt DateTime
     createdAt DateTime @default(now())
+
+    @@index([userId])
+    @@index([expiresAt])
 }

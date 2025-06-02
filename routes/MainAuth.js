@@ -1,3 +1,4 @@
+// routes/MainAuth.js
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import express from "express";
@@ -175,7 +176,7 @@ authRoutes.post(
 );
 
 // Enhanced refresh token route with security checks
-authRoutes.post("/refreshToken", async (req, res) => {
+authRoutes.post("/refresh-token", async (req, res) => {
 	try {
 		const oldRefreshToken = req.signedCookies.refreshToken;
 

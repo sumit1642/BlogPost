@@ -11,7 +11,7 @@ export const validateRegisterInput = (req, res, next) => {
 	if (!name || !email || !password) {
 		return res.status(400).json({
 			status: "error",
-			message: "All fields are required",
+			message: "All fields are required (name, email, password)",
 			code: 400,
 		});
 	}
@@ -34,11 +34,19 @@ export const validateRegisterInput = (req, res, next) => {
 		});
 	}
 
-	// Validate name length
+	// Validate name length and format
 	if (name.trim().length < 2) {
 		return res.status(400).json({
 			status: "error",
 			message: "Name must be at least 2 characters long",
+			code: 400,
+		});
+	}
+
+	if (name.trim().length > 50) {
+		return res.status(400).json({
+			status: "error",
+			message: "Name cannot exceed 50 characters",
 			code: 400,
 		});
 	}
@@ -83,7 +91,7 @@ export const validateLoginInput = (req, res, next) => {
 	if (!email || !password) {
 		return res.status(400).json({
 			status: "error",
-			message: "All fields are required",
+			message: "Both email and password are required",
 			code: 400,
 		});
 	}
