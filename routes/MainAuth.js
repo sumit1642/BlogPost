@@ -87,7 +87,12 @@ authRoutes.post(
 				sameSite: "lax",
 			});
 
-			const { password: _, ...userWithoutPassword } = user;
+			// Very important, when sending another request , always remove the sensitive fields like password as it contains password hash and its a hash not encrypted so it is not safe.
+			const userWithoutPassword = {
+				id: newUser.id,
+				name: newUser.name,
+				email: newUser.email,
+			};
 
 			return res.status(200).json({
 				status: "success",
