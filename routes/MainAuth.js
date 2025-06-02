@@ -34,6 +34,7 @@ authRoutes.post(
 				},
 			});
 
+			// Very important, when sending another request , always remove the sensitive fields like password as it contains password hash and its a hash not encrypted so it is not safe.
 			const userWithoutPassword = {
 				id: newUser.id,
 				name: newUser.name,
