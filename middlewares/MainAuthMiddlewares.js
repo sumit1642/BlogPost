@@ -1,6 +1,4 @@
-// middlewares/MainAuthMiddlewares.js
 import { PrismaClient } from "@prisma/client";
-
 const prisma = new PrismaClient();
 
 export const validateRegisterInput = (req, res, next) => {
@@ -17,11 +15,11 @@ export const validateRegisterInput = (req, res, next) => {
 
 export const checkIfUserExists = async (req, res, next) => {
 	const email = req.body.email;
-	const existingUser = await prisma.user.findUnique({ where: { email } });
-	if (existingUser) {
+	const user = await prisma.user.findUnique({ where: { email } });
+	if (user) {
 		return res.status(409).json({
 			status: "error",
-			message: "User with that email already exists",
+			message: "User already exists",
 			code: 409,
 		});
 	}
@@ -47,7 +45,7 @@ export const getUserByEmail = async (req, res, next) => {
 	if (!user) {
 		return res.status(401).json({
 			status: "error",
-			message: "User doesn't exist",
+			message: "User not found",
 			code: 401,
 		});
 	}
