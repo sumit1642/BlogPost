@@ -1,83 +1,100 @@
 // middlewares/MainPostsMiddlewares.js
 import jwt from "jsonwebtoken";
+import Joi from "joi";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET || "jwtsupersecretkey";
 
-// Simple auth middleware
-export const verifyAuth = (req, res, next) => {
-	const token = req.signedCookies.token;
+// Validation schemas
+const postSchema = Joi.object({
+	title: Joi.string().min(1).max(50).required(),
+	content: Joi.string().max(191).allow("").optional(),
+});
 
-	if (!token) {
-		return res.status(401).json({
-			status: "error",
-			message: "Authentication required",
-		});
-	}
+const idSchema = Joi.object({
+	id: Joi.number().integer().positive().required(),
+});
 
+// Verify authentication
+export const verifyAuth = async (req, res, next) => {
 	try {
-		const decoded = jwt.verify(
-			token,
-			process.env.JWT_SECRET || "jwtsupersecretkey",
-		);
+		const token = req.signedCookies.token;
+
+		if (!token) {
+			return res.status(401).json({
+				status: "error",
+				message: "Access token required",
+			});
+		}
+
+		const decoded = jwt.verify(token, JWT_SECRET);
+
+		// Check if user still exists
+		const user = await prisma.user.findUnique({
+			where: { id: decoded.user_ID },
+		});
+
+		if (!user) {
+			return res.status(401).json({
+				status: "error",
+				message: "User not found",
+			});
+		}
+
 		req.user = decoded;
 		next();
 	} catch (error) {
-		return res.status(401).json({
+		if (error.name === "JsonWebTokenError") {
+			return res.status(401).json({
+				status: "error",
+				message: "Invalid token",
+			});
+		}
+		if (error.name === "TokenExpiredError") {
+			return res.status(401).json({
+				status: "error",
+				message: "Token expired",
+			});
+		}
+		console.error("Auth verification error:", error);
+		return res.status(500).json({
 			status: "error",
-			message: "Invalid or expired token",
+			message: "Internal server error",
 		});
 	}
 };
 
-// Simple post validation
+// Validate post input
 export const validatePostInput = (req, res, next) => {
-	const { title, content } = req.body;
-
-	if (!title || !content) {
+	const { error } = postSchema.validate(req.body);
+	if (error) {
 		return res.status(400).json({
 			status: "error",
-			message: "Title and content are required",
+			message: error.details[0].message,
 		});
 	}
-
-	if (title.trim().length < 3) {
-		return res.status(400).json({
-			status: "error",
-			message: "Title must be at least 3 characters long",
-		});
-	}
-
-	if (content.trim().length < 10) {
-		return res.status(400).json({
-			status: "error",
-			message: "Content must be at least 10 characters long",
-		});
-	}
-
-	// Clean inputs
-	req.body.title = title.trim();
-	req.body.content = content.trim();
-
 	next();
 };
 
-// Simple ID validation
+// Validate ID parameter
 export const validateIdParam = (req, res, next) => {
 	const id = parseInt(req.params.id);
+	const { error } = idSchema.validate({ id });
 
-	if (isNaN(id) || id <= 0) {
+	if (error || isNaN(id)) {
 		return res.status(400).json({
 			status: "error",
 			message: "Invalid post ID",
 		});
 	}
 
+	// Convert to integer for database query
 	req.params.id = id;
 	next();
 };
 
-// Check if user owns the post
+// Check post ownership
 export const checkPostOwnership = async (req, res, next) => {
 	try {
 		const postId = req.params.id;
@@ -97,14 +114,13 @@ export const checkPostOwnership = async (req, res, next) => {
 		if (post.authorId !== userId) {
 			return res.status(403).json({
 				status: "error",
-				message: "You are not authorized to perform this action",
+				message: "Access denied. You can only modify your own posts",
 			});
 		}
 
-		req.post = post;
 		next();
 	} catch (error) {
-		console.error("Post ownership check error:", error);
+		console.error("Check post ownership error:", error);
 		return res.status(500).json({
 			status: "error",
 			message: "Internal server error",

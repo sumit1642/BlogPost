@@ -1,54 +1,49 @@
 // middlewares/MainAuthMiddlewares.js
+import Joi from "joi";
 import { PrismaClient } from "@prisma/client";
-import validator from "validator";
 
 const prisma = new PrismaClient();
 
+// Validation schemas
+const registerSchema = Joi.object({
+	name: Joi.string().min(2).max(50).required(),
+	email: Joi.string().email().required(),
+	password: Joi.string().min(6).required(),
+});
+
+const loginSchema = Joi.object({
+	email: Joi.string().email().required(),
+	password: Joi.string().min(6).required(),
+});
+
+// Validate register input
 export const validateRegisterInput = (req, res, next) => {
-	const { name, email, password } = req.body;
-
-	// Check for required fields
-	if (!name || !email || !password) {
+	const { error } = registerSchema.validate(req.body);
+	if (error) {
 		return res.status(400).json({
 			status: "error",
-			message: "All fields are required (name, email, password)",
+			message: error.details[0].message,
 		});
 	}
-
-	// Validate email format
-	if (!validator.isEmail(email)) {
-		return res.status(400).json({
-			status: "error",
-			message: "Please provide a valid email address",
-		});
-	}
-
-	// Basic password length check
-	if (password.length < 6) {
-		return res.status(400).json({
-			status: "error",
-			message: "Password must be at least 6 characters long",
-		});
-	}
-
-	// Basic name validation
-	if (name.trim().length < 2) {
-		return res.status(400).json({
-			status: "error",
-			message: "Name must be at least 2 characters long",
-		});
-	}
-
-	// Clean inputs
-	req.body.name = name.trim();
-	req.body.email = email.toLowerCase().trim();
-
 	next();
 };
 
+// Validate login input
+export const validateLoginInput = (req, res, next) => {
+	const { error } = loginSchema.validate(req.body);
+	if (error) {
+		return res.status(400).json({
+			status: "error",
+			message: error.details[0].message,
+		});
+	}
+	next();
+};
+
+// Check if user already exists
 export const checkIfUserExists = async (req, res, next) => {
 	try {
-		const email = req.body.email;
+		const { email } = req.body;
 		const existingUser = await prisma.user.findUnique({
 			where: { email },
 		});
@@ -56,13 +51,12 @@ export const checkIfUserExists = async (req, res, next) => {
 		if (existingUser) {
 			return res.status(409).json({
 				status: "error",
-				message: "User with that email already exists",
+				message: "User with this email already exists",
 			});
 		}
-
 		next();
 	} catch (error) {
-		console.error("Database error:", error);
+		console.error("Check user exists error:", error);
 		return res.status(500).json({
 			status: "error",
 			message: "Internal server error",
@@ -70,33 +64,10 @@ export const checkIfUserExists = async (req, res, next) => {
 	}
 };
 
-export const validateLoginInput = (req, res, next) => {
-	const { email, password } = req.body;
-
-	if (!email || !password) {
-		return res.status(400).json({
-			status: "error",
-			message: "Both email and password are required",
-		});
-	}
-
-	// Validate email format
-	if (!validator.isEmail(email)) {
-		return res.status(400).json({
-			status: "error",
-			message: "Please provide a valid email address",
-		});
-	}
-
-	// Clean email
-	req.body.email = email.toLowerCase().trim();
-
-	next();
-};
-
+// Get user by email
 export const getUserByEmail = async (req, res, next) => {
 	try {
-		const email = req.body.email;
+		const { email } = req.body;
 		const user = await prisma.user.findUnique({
 			where: { email },
 		});
@@ -111,7 +82,7 @@ export const getUserByEmail = async (req, res, next) => {
 		req.foundUser = user;
 		next();
 	} catch (error) {
-		console.error("Database error:", error);
+		console.error("Get user by email error:", error);
 		return res.status(500).json({
 			status: "error",
 			message: "Internal server error",

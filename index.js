@@ -59,19 +59,37 @@ app.use("*", (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+// Start server
+const server = app.listen(PORT, () => {
 	console.log(`Server is running on port ${PORT}`);
 });
 
 // Graceful shutdown
-process.on("SIGINT", async () => {
-	console.log("Shutting down gracefully...");
+const gracefulShutdown = async (signal) => {
+	console.log(`Received ${signal}. Shutting down gracefully...`);
+
+	// Close server
+	server.close(() => {
+		console.log("HTTP server closed.");
+	});
+
+	// Disconnect Prisma
 	await prisma.$disconnect();
+	console.log("Database connection closed.");
+
 	process.exit(0);
+};
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (reason, promise) => {
+	console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
 
-process.on("SIGTERM", async () => {
-	console.log("Shutting down gracefully...");
-	await prisma.$disconnect();
-	process.exit(0);
+// Handle uncaught exceptions
+process.on("uncaughtException", (error) => {
+	console.error("Uncaught Exception:", error);
+	process.exit(1);
 });
