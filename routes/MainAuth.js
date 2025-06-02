@@ -34,7 +34,11 @@ authRoutes.post(
 				},
 			});
 
-			const { password: _, ...userWithoutPassword } = newUser;
+			const userWithoutPassword = {
+				id: newUser.id,
+				name: newUser.name,
+				email: newUser.email,
+			};
 
 			return res.status(201).json({
 				status: "success",
