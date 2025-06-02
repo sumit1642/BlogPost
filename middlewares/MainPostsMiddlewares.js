@@ -1,42 +1,157 @@
 import jwt from "jsonwebtoken";
 import Joi from "joi";
+import { PrismaClient } from "@prisma/client";
 
-// Auth middleware, unchanged
-export const verifyAuth = (req, res, next) => {
-	const token = req.signedCookies.token;
-	if (!token)
-		return res
-			.status(401)
-			.json({ status: "error", message: "Not authenticated", code: 401 });
+const prisma = new PrismaClient();
 
+// Enhanced auth middleware with proper error handling
+export const verifyAuth = async (req, res, next) => {
 	try {
-		const decoded = jwt.verify(token, "jwtsupersecretkey");
-		req.user = decoded;
-		next();
-	} catch {
-		return res
-			.status(403)
-			.json({
+		const token = req.signedCookies.token;
+
+		if (!token) {
+			return res.status(401).json({
 				status: "error",
-				message: "Invalid or expired token",
-				code: 403,
+				message: "Authentication required",
+				code: 401,
 			});
+		}
+
+		let decoded;
+		try {
+			decoded = jwt.verify(
+				token,
+				process.env.JWT_SECRET || "jwtsupersecretkey",
+			);
+		} catch (jwtError) {
+			// Token is invalid or expired, try to refresh it
+			const refreshToken = req.signedCookies.refreshToken;
+
+			if (!refreshToken) {
+				return res.status(401).json({
+					status: "error",
+					message: "Authentication required",
+					code: 401,
+				});
+			}
+
+			try {
+				const refreshDecoded = jwt.verify(
+					refreshToken,
+					process.env.REFRESH_TOKEN_SECRET || "refreshTokenSecretKey",
+				);
+
+				// Check if refresh token exists in database
+				const storedToken = await prisma.refreshToken.findUnique({
+					where: { token: refreshToken },
+					include: {
+						user: { select: { id: true, email: true, name: true } },
+					},
+				});
+
+				if (!storedToken || new Date() > storedToken.expiresAt) {
+					return res.status(403).json({
+						status: "error",
+						message: "Session expired, please login again",
+						code: 403,
+					});
+				}
+
+				// Generate new access token
+				const newAccessToken = jwt.sign(
+					{ user_ID: refreshDecoded.user_ID },
+					process.env.JWT_SECRET || "jwtsupersecretkey",
+					{ expiresIn: "15m" },
+				);
+
+				// Set new access token cookie
+				res.cookie("token", newAccessToken, {
+					httpOnly: true,
+					secure: process.env.NODE_ENV === "production",
+					signed: true,
+					maxAge: 15 * 60 * 1000, // 15 minutes
+					sameSite: "lax",
+				});
+
+				req.user = { user_ID: refreshDecoded.user_ID };
+				next();
+			} catch (refreshError) {
+				return res.status(403).json({
+					status: "error",
+					message: "Invalid session, please login again",
+					code: 403,
+				});
+			}
+		}
+
+		if (decoded) {
+			// Verify user still exists in database
+			const user = await prisma.user.findUnique({
+				where: { id: decoded.user_ID },
+				select: { id: true, email: true, name: true },
+			});
+
+			if (!user) {
+				return res.status(401).json({
+					status: "error",
+					message: "User account no longer exists",
+					code: 401,
+				});
+			}
+
+			req.user = decoded;
+			next();
+		}
+	} catch (error) {
+		console.error("Auth middleware error:", error);
+		return res.status(500).json({
+			status: "error",
+			message: "Internal server error",
+			code: 500,
+		});
 	}
 };
 
-// Validation schemas
+// Validation schemas with enhanced rules
 const postSchema = Joi.object({
-	title: Joi.string().trim().min(3).max(100).required(),
-	content: Joi.string().trim().min(10).max(1000).required(),
+	title: Joi.string()
+		.trim()
+		.min(3)
+		.max(100)
+		.pattern(/^[a-zA-Z0-9\s\-_.,!?]+$/)
+		.required()
+		.messages({
+			"string.pattern.base": "Title contains invalid characters",
+			"string.min": "Title must be at least 3 characters long",
+			"string.max": "Title cannot exceed 100 characters",
+		}),
+	content: Joi.string().trim().min(10).max(2000).required().messages({
+		"string.min": "Content must be at least 10 characters long",
+		"string.max": "Content cannot exceed 2000 characters",
+	}),
 });
 
 const idParamSchema = Joi.object({
-	id: Joi.number().integer().positive().required(),
+	id: Joi.string()
+		.pattern(/^\d+$/)
+		.custom((value, helpers) => {
+			const num = parseInt(value);
+			if (num <= 0 || num > 2147483647) {
+				return helpers.error("number.invalid");
+			}
+			return num;
+		})
+		.required()
+		.messages({
+			"string.pattern.base": "Invalid post ID format",
+			"number.invalid": "Post ID must be a positive integer",
+		}),
 });
 
 // Middleware for validating post body
 export const validatePostInput = (req, res, next) => {
-	const { error } = postSchema.validate(req.body);
+	const { error, value } = postSchema.validate(req.body);
+
 	if (error) {
 		return res.status(400).json({
 			status: "error",
@@ -44,12 +159,16 @@ export const validatePostInput = (req, res, next) => {
 			code: 400,
 		});
 	}
+
+	// Sanitize and set validated values
+	req.body = value;
 	next();
 };
 
 // Middleware for validating :id param
 export const validateIdParam = (req, res, next) => {
-	const { error } = idParamSchema.validate(req.params);
+	const { error, value } = idParamSchema.validate(req.params);
+
 	if (error) {
 		return res.status(400).json({
 			status: "error",
@@ -57,5 +176,47 @@ export const validateIdParam = (req, res, next) => {
 			code: 400,
 		});
 	}
+
+	// Convert to integer and set back to params
+	req.params.id = value.id;
 	next();
+};
+
+// Middleware to check post ownership
+export const checkPostOwnership = async (req, res, next) => {
+	try {
+		const postId = parseInt(req.params.id);
+		const userId = req.user.user_ID;
+
+		const post = await prisma.post.findUnique({
+			where: { id: postId },
+			select: { id: true, authorId: true, title: true },
+		});
+
+		if (!post) {
+			return res.status(404).json({
+				status: "error",
+				message: "Post not found",
+				code: 404,
+			});
+		}
+
+		if (post.authorId !== userId) {
+			return res.status(403).json({
+				status: "error",
+				message: "You are not authorized to perform this action",
+				code: 403,
+			});
+		}
+
+		req.post = post;
+		next();
+	} catch (error) {
+		console.error("Post ownership check error:", error);
+		return res.status(500).json({
+			status: "error",
+			message: "Internal server error",
+			code: 500,
+		});
+	}
 };
