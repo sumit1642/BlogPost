@@ -19,9 +19,8 @@ model Post {
 
     @@index([authorId])
     @@index([published])
-    @@index([createdAt])
+	@@index([createdAt])
 }
-
 model User {
     id            Int            @id @default(autoincrement())
     email         String         @unique
