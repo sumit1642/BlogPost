@@ -1,4 +1,3 @@
-// middlewares/MainPostsMiddlewares.js
 import jwt from "jsonwebtoken";
 import Joi from "joi";
 import { PrismaClient } from "@prisma/client";
@@ -6,7 +5,6 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || "jwtsupersecretkey";
 
-// Validation schemas
 const postSchema = Joi.object({
 	title: Joi.string().min(1).max(50).required(),
 	content: Joi.string().max(191).allow("").optional(),
@@ -16,7 +14,6 @@ const idSchema = Joi.object({
 	id: Joi.number().integer().positive().required(),
 });
 
-// Verify authentication
 export const verifyAuth = async (req, res, next) => {
 	try {
 		const token = req.signedCookies.token;
@@ -30,7 +27,6 @@ export const verifyAuth = async (req, res, next) => {
 
 		const decoded = jwt.verify(token, JWT_SECRET);
 
-		// Check if user still exists
 		const user = await prisma.user.findUnique({
 			where: { id: decoded.user_ID },
 		});
@@ -65,7 +61,6 @@ export const verifyAuth = async (req, res, next) => {
 	}
 };
 
-// Validate post input
 export const validatePostInput = (req, res, next) => {
 	const { error } = postSchema.validate(req.body);
 	if (error) {
@@ -77,7 +72,6 @@ export const validatePostInput = (req, res, next) => {
 	next();
 };
 
-// Validate ID parameter
 export const validateIdParam = (req, res, next) => {
 	const id = parseInt(req.params.id);
 	const { error } = idSchema.validate({ id });
@@ -89,12 +83,10 @@ export const validateIdParam = (req, res, next) => {
 		});
 	}
 
-	// Convert to integer for database query
 	req.params.id = id;
 	next();
 };
 
-// Check post ownership
 export const checkPostOwnership = async (req, res, next) => {
 	try {
 		const postId = req.params.id;

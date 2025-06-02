@@ -3,8 +3,9 @@ import Joi from "joi";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
-
-// Validation schemas
+/**
+ * Headache goes away with joi.
+ */
 const registerSchema = Joi.object({
 	name: Joi.string().min(2).max(50).required(),
 	email: Joi.string().email().required(),
@@ -16,7 +17,6 @@ const loginSchema = Joi.object({
 	password: Joi.string().min(6).required(),
 });
 
-// Validate register input
 export const validateRegisterInput = (req, res, next) => {
 	const { error } = registerSchema.validate(req.body);
 	if (error) {
@@ -28,7 +28,6 @@ export const validateRegisterInput = (req, res, next) => {
 	next();
 };
 
-// Validate login input
 export const validateLoginInput = (req, res, next) => {
 	const { error } = loginSchema.validate(req.body);
 	if (error) {
@@ -40,7 +39,6 @@ export const validateLoginInput = (req, res, next) => {
 	next();
 };
 
-// Check if user already exists
 export const checkIfUserExists = async (req, res, next) => {
 	try {
 		const { email } = req.body;
@@ -64,7 +62,6 @@ export const checkIfUserExists = async (req, res, next) => {
 	}
 };
 
-// Get user by email
 export const getUserByEmail = async (req, res, next) => {
 	try {
 		const { email } = req.body;

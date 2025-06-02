@@ -11,7 +11,6 @@ import {
 const prisma = new PrismaClient();
 export const postsRoutes = express.Router();
 
-// Get all posts (public - for home page)
 postsRoutes.get("/posts", async (req, res) => {
 	try {
 		const posts = await prisma.post.findMany({
@@ -42,7 +41,6 @@ postsRoutes.get("/posts", async (req, res) => {
 	}
 });
 
-// Get single post by ID (public)
 postsRoutes.get("/posts/:id", validateIdParam, async (req, res) => {
 	try {
 		const postId = req.params.id;
@@ -86,7 +84,6 @@ postsRoutes.get("/posts/:id", validateIdParam, async (req, res) => {
 	}
 });
 
-// Get current user's posts (protected)
 postsRoutes.get("/my-posts", verifyAuth, async (req, res) => {
 	try {
 		const posts = await prisma.post.findMany({
@@ -115,7 +112,6 @@ postsRoutes.get("/my-posts", verifyAuth, async (req, res) => {
 	}
 });
 
-// Create new post (protected)
 postsRoutes.post("/posts", verifyAuth, validatePostInput, async (req, res) => {
 	try {
 		const { title, content } = req.body;
@@ -152,7 +148,6 @@ postsRoutes.post("/posts", verifyAuth, validatePostInput, async (req, res) => {
 	}
 });
 
-// Update post (protected)
 postsRoutes.put(
 	"/posts/:id",
 	verifyAuth,
@@ -198,7 +193,6 @@ postsRoutes.put(
 	},
 );
 
-// Delete post (protected)
 postsRoutes.delete(
 	"/posts/:id",
 	verifyAuth,

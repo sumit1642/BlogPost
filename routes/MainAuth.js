@@ -16,7 +16,6 @@ export const authRoutes = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || "jwtsupersecretkey";
 
-// Register route
 authRoutes.post(
 	"/register",
 	validateRegisterInput,
@@ -25,10 +24,8 @@ authRoutes.post(
 		try {
 			const { name, email, password } = req.body;
 
-			// Hash password
 			const hashedPassword = await bcrypt.hash(password, 10);
 
-			// Create user
 			const newUser = await prisma.user.create({
 				data: {
 					name,
@@ -37,7 +34,6 @@ authRoutes.post(
 				},
 			});
 
-			// Remove password from response
 			const { password: _, ...userWithoutPassword } = newUser;
 
 			return res.status(201).json({
@@ -55,7 +51,6 @@ authRoutes.post(
 	},
 );
 
-// Login route
 authRoutes.post(
 	"/login",
 	validateLoginInput,
@@ -65,7 +60,6 @@ authRoutes.post(
 			const { password } = req.body;
 			const user = req.foundUser;
 
-			// Check password
 			const validPassword = await bcrypt.compare(password, user.password);
 			if (!validPassword) {
 				return res.status(401).json({
@@ -74,14 +68,12 @@ authRoutes.post(
 				});
 			}
 
-			// Generate JWT token
 			const token = jwt.sign(
 				{ user_ID: user.id, email: user.email },
 				JWT_SECRET,
 				{ expiresIn: "7d" },
 			);
 
-			// Set cookie
 			res.cookie("token", token, {
 				httpOnly: true,
 				secure: process.env.NODE_ENV === "production",
@@ -90,7 +82,6 @@ authRoutes.post(
 				sameSite: "lax",
 			});
 
-			// Remove password from response
 			const { password: _, ...userWithoutPassword } = user;
 
 			return res.status(200).json({
@@ -108,7 +99,6 @@ authRoutes.post(
 	},
 );
 
-// Logout route
 authRoutes.post("/logout", (req, res) => {
 	res.clearCookie("token", {
 		httpOnly: true,
@@ -123,7 +113,6 @@ authRoutes.post("/logout", (req, res) => {
 	});
 });
 
-// Get current user info
 authRoutes.get("/me", async (req, res) => {
 	try {
 		const token = req.signedCookies.token;
